@@ -1,0 +1,6 @@
+D:\C#\SmallServer\SmallServer\bin\Debug\SmallServer.exe.config
+D:\C#\SmallServer\SmallServer\bin\Debug\SmallServer.exe
+D:\C#\SmallServer\SmallServer\bin\Debug\SmallServer.pdb
+D:\C#\SmallServer\SmallServer\obj\Debug\SmallServer.csprojResolveAssemblyReference.cache
+D:\C#\SmallServer\SmallServer\obj\Debug\SmallServer.exe
+D:\C#\SmallServer\SmallServer\obj\Debug\SmallServer.pdb
