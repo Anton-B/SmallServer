@@ -1,20 +1,29 @@
-﻿using System.Net;
+﻿using System;
+using System.Net;
 using System.Net.Sockets;
 
 namespace SmallServer
 {
-    class Server
+    class Server : IDisposable
     {
-        private TcpListener Listener;
+        private TcpListener listener;
 
         public Server(int port)
         {
-            Listener = new TcpListener(IPAddress.Any, port);
-            Listener.Start();
+            listener = new TcpListener(IPAddress.Any, port);
+            Start();
+        }
+
+        private void Start()
+        {            
+            listener.Start();
             while (true)
-            {
-                new Client(Listener.AcceptTcpClientAsync().Result);
-            }
+                Client.Request(listener.AcceptTcpClientAsync().Result);
+        }
+
+        public void Dispose()
+        {
+            listener.Stop();
         }
 
         static void Main(string[] args)

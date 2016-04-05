@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -8,22 +7,15 @@ using System.Text;
 
 namespace SmallServer
 {
-    class Client
+    static class Client
     {
-        public Client(TcpClient client)
+        public static void Request(TcpClient client)
         {
             using (client)
             {
-                var request = new StringBuilder();
-                var buffer = new byte[1024];
-                int count;
-                while ((count = client.GetStream().Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    request.Append(Encoding.ASCII.GetString(buffer, 0, buffer.Length));
-                    if (request.ToString().IndexOf("\r\n\r\n") >= 0)
-                        break;
-                }
-                var requestUri = Uri.UnescapeDataString(request.ToString().Split(' ')[1]);
+                var reader = new StreamReader(client.GetStream());
+                var request = reader.ReadLine();
+                var requestUri = Uri.UnescapeDataString(request.Split(' ')[1]);
                 if (requestUri.IndexOf("..") >= 0)
                 {
                     SendError(client, 400);
@@ -46,7 +38,7 @@ namespace SmallServer
             }
         }
 
-        private void OpenDir(TcpClient client, string path)
+        private static void OpenDir(TcpClient client, string path)
         {
             using (client)
             {
@@ -55,7 +47,7 @@ namespace SmallServer
                 string parentPath = path.TrimEnd('/');
                 parentPath = (parentPath.Contains('/')) ? parentPath.Substring(0, parentPath.LastIndexOf('/')) : string.Empty;
                 if (!path.Equals("/"))
-                    dirs.AppendFormat("<a href=\"/{0}\">{1}/</a><br>", parentPath, "[Родительская директория]");
+                    dirs.AppendFormat("<a href=\"/{0}\">{1}/</a><br>", parentPath, "[Parent directory]");
                 else if (File.Exists("index.html"))
                 {
                     OpenFile(client, "index.html");
@@ -69,12 +61,12 @@ namespace SmallServer
                     files.AppendFormat("<a href=\"/{0}{1}\">{1}</a><br>", path.TrimStart('/'), file.Name);
                 var html = string.Format("<html><body><h1>Current directory content</h1><br>{0}<br>{1}</body></html>",
                     dirs.ToString(), files.ToString());
-                SendHtmlResponse(client, 200, html);
+                SendResponse(client, 200, "text/html", Encoding.ASCII.GetBytes(html));
                 return;
             }
         }
 
-        private void OpenFile(TcpClient client, string path)
+        private static void OpenFile(TcpClient client, string path)
         {
             using (client)
             {
@@ -108,40 +100,21 @@ namespace SmallServer
                             ? string.Format("text/{0}", file.Extension.Substring(1)) : "application/unknown";
                         break;
                 }
-                FileStream fs;
+                byte[] content;
                 try
                 {
-                    fs = file.OpenRead();
+                    content = File.ReadAllBytes(file.FullName);
                 }
                 catch
                 {
                     SendError(client, 500);
                     return;
-                }
-                var content = new List<byte>();
-                while (true)
-                {
-                    var n = fs.ReadByte();
-                    if (n == -1)
-                        break;
-                    content.Add((byte)n);
-                }
-                SendResponse(client, 200, contentType, content.ToArray());
+                }                
+                SendResponse(client, 200, contentType, content);
             }
         }
 
-        private void SendHtmlResponse(TcpClient client, int code, string html)
-        {
-            using (client)
-            {
-                var response = string.Format("HTTP/1.1 {0} {1}\r\nContent-Type: text/html\r\nContent-Length: {2}\r\n\r\n{3}",
-                    code, (HttpStatusCode)code, html.Length, html);
-                var buffer = Encoding.ASCII.GetBytes(response);
-                client.GetStream().Write(buffer, 0, buffer.Length);
-            }
-        }
-
-        private void SendResponse(TcpClient client, int code, string contentType, byte[] content)
+        private static void SendResponse(TcpClient client, int code, string contentType, byte[] content)
         {
             using (client)
             {
@@ -153,12 +126,12 @@ namespace SmallServer
             }
         }
 
-        private void SendError(TcpClient client, int code)
+        private static void SendError(TcpClient client, int code)
         {
             using (client)
             {
                 var html = string.Format("<html><body><h1>{0} {1}</h1></body></html>", code, (HttpStatusCode)code);
-                SendHtmlResponse(client, code, html);
+                SendResponse(client, code, "text/html", Encoding.ASCII.GetBytes(html));
             }
         }
     }
